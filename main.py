@@ -7,8 +7,8 @@ import os
 
 # ======== CONFIGURE THESE ========
 JENKINS_URL = os.environ["JENKINS_URL"]
-USERNAME = os.environ["USERNAME"]
-API_TOKEN = os.environ["API_TOKEN"]
+USERNAME = os.environ["JENKINS_USERNAME"]
+API_TOKEN = os.environ["JENKINS_API_TOKEN"]
 
 TARGET_JOBS = [
     "🌐 Integration",
@@ -165,7 +165,7 @@ def main():
         print(
             f"⚠️ No parameters found — Triggering build:{job_name} without parameters."
         )
-        i = input("Type proceed to continue...")
+        i = input("Type proceed to continue:")
         if i != "proceed":
             return
         queue_id = server.build_job(job_name)
@@ -177,11 +177,13 @@ def main():
                 f"   - {Fore.CYAN}{k}{Style.RESET_ALL}: {Fore.GREEN}{v}{Style.RESET_ALL}"
             )
 
-        i = input("Type proceed to continue...")
+        i = input("Type proceed to continue:")
         if i != "proceed":
             return
 
         queue_id = server.build_job(job_name, parameters=user_inputs)
+
+    print("Triggered build")
 
     # wait_for_build(server, job_name, queue_id)
 
