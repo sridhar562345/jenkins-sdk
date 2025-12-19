@@ -177,9 +177,15 @@ def main():
                 f"   - {Fore.CYAN}{k}{Style.RESET_ALL}: {Fore.GREEN}{v}{Style.RESET_ALL}"
             )
 
-        i = input("Type proceed to continue:")
-        if i != "proceed":
-            return
+        while True:
+            i = input("Type proceed to continue:")
+            if not i:
+                continue
+            if i == "proceed":
+                break
+            elif i != "proceed":
+                print("Invalid input. Aborting build.")
+                return
 
         queue_id = server.build_job(job_name, parameters=user_inputs)
 
