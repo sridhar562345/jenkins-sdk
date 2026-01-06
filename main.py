@@ -16,8 +16,7 @@ TARGET_JOBS = [
     "🌐 Processor",
     "💻 Member Web App",
     "💻 Staff Web App",
-    "MH Member Web App",
-    "MH Staff Web App",
+    "Release Pipeline",
 ]
 # =================================
 
