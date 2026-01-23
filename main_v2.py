@@ -195,5 +195,83 @@ def main():
     # wait_for_build(server, job_name, queue_id)
 
 
+def trigger_p360(params):
+    required_params = set(
+        {
+            "environment": "MH STG",
+            "tag": "2517",
+            "migrate": True,
+            "maintenance": False,
+            "deploy_prebuilt_image": False,
+            "build_only": False,
+        }.keys()
+    )
+    if len(required_params) != len(params):
+        print("Required params not found.")
+    elif set(required_params) != set(params.keys()):
+        print("Required params not matched.")
+
+    server = connect_jenkins()
+    print(
+        f"\n<UNK> Triggering 🌐 P360 build:{params['environment']}  with parameters:"
+    )
+    i = input("Type proceed to continue:")
+    if i != "proceed":
+        return
+    queue_id = server.build_job("🌐 P360", parameters=params)
+
+
+def trigger_staff(params):
+    required_params = set(
+        {
+            "environment": "RAFFLES STG",
+            "flutter_version": "3.38.3",
+            "tag": "1127",
+            "reyakit_tag": "1507",
+            "version_no": "1.12.0",
+            "build_no": "5",
+            "maintenance": False,
+        }.keys()
+    )
+    if len(required_params) != len(params):
+        print("Required params not found.")
+    elif set(required_params) != set(params.keys()):
+        print("Required params not matched.")
+    server = connect_jenkins()
+    print(
+        f"\n<UNK> Triggering 💻 Staff Web App build:{params['environment']}  with parameters:"
+    )
+    i = input("Type proceed to continue:")
+    if i != "proceed":
+        return
+    queue_id = server.build_job("💻 Staff Web App", parameters=params)
+
+
+def trigger_member(params):
+    required_params = set(
+        {
+            "environment": "RAFFLES STG",
+            "flutter_version": "3.38.3",
+            "tag": "1148",
+            "reyakit_tag": "1507",
+            "version_no": "1.12.0",
+            "build_no": "5",
+            "maintenance": False,
+        }.keys()
+    )
+    if len(required_params) != len(params):
+        print("Required params not found.")
+    elif set(required_params) != set(params.keys()):
+        print("Required params not matched.")
+    server = connect_jenkins()
+    print(
+        f"\n<UNK> Triggering 💻 Member Web App:{params['environment']}  with parameters:"
+    )
+    i = input("Type proceed to continue:")
+    if i != "proceed":
+        return
+    queue_id = server.build_job("💻 Member Web App", parameters=params)
+
+
 if __name__ == "__main__":
     main()
