@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-import jenkins
-import time
-import sys
-from colorama import init, Fore, Style
 import os
+import sys
+import time
+
+import jenkins
+from colorama import Fore, Style, init
 
 # ======== CONFIGURE THESE ========
 JENKINS_URL = os.environ["JENKINS_URL"]
@@ -212,6 +213,7 @@ def trigger_p360(params):
         print("Required params not matched.")
 
     server = connect_jenkins()
+    print(params)
     print(
         f"\n<UNK> Triggering 🌐 P360 build:{params['environment']}  with parameters:"
     )
@@ -219,6 +221,7 @@ def trigger_p360(params):
     if i != "proceed":
         return
     queue_id = server.build_job("🌐 P360", parameters=params)
+    print("Triggered build for p360")
 
 
 def trigger_staff(params):
@@ -238,6 +241,8 @@ def trigger_staff(params):
     elif set(required_params) != set(params.keys()):
         print("Required params not matched.")
     server = connect_jenkins()
+    print(params)
+
     print(
         f"\n<UNK> Triggering 💻 Staff Web App build:{params['environment']}  with parameters:"
     )
@@ -245,6 +250,7 @@ def trigger_staff(params):
     if i != "proceed":
         return
     queue_id = server.build_job("💻 Staff Web App", parameters=params)
+    print("Triggered build for staff")
 
 
 def trigger_member(params):
@@ -264,6 +270,7 @@ def trigger_member(params):
     elif set(required_params) != set(params.keys()):
         print("Required params not matched.")
     server = connect_jenkins()
+    print(params)
     print(
         f"\n<UNK> Triggering 💻 Member Web App:{params['environment']}  with parameters:"
     )
@@ -271,7 +278,40 @@ def trigger_member(params):
     if i != "proceed":
         return
     queue_id = server.build_job("💻 Member Web App", parameters=params)
+    print("Triggered build for member")
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+
+    # trigger_p360(
+    #     params={
+    #         "environment": "IHL STG",
+    #         "tag": "2519",
+    #         "migrate": True,
+    #         "maintenance": False,
+    #         "deploy_prebuilt_image": True,
+    #         "build_only": False,
+    #     }
+    # )
+    # trigger_staff(
+    #     params={
+    #         "environment": "RAFFLES STG",
+    #         "flutter_version": "3.38.3",
+    #         "tag": "1127",
+    #         "reyakit_tag": "1510",
+    #         "version_no": "1.12.0",
+    #         "build_no": "7",
+    #         "maintenance": False,
+    #     }
+    # )
+    # trigger_member(
+    #     params={
+    #         "environment": "RAFFLES STG",
+    #         "flutter_version": "3.38.3",
+    #         "tag": "1148",
+    #         "reyakit_tag": "1510",
+    #         "version_no": "1.12.0",
+    #         "build_no": "7",
+    #         "maintenance": False,
+    #     }
+    # )
