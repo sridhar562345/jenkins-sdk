@@ -213,10 +213,11 @@ def trigger_p360(params):
         print("Required params not matched.")
 
     server = connect_jenkins()
-    print(params)
     print(
         f"\n<UNK> Triggering 🌐 P360 build:{params['environment']}  with parameters:"
     )
+    print(params)
+
     i = input("Type proceed to continue:")
     if i != "proceed":
         return
@@ -241,11 +242,12 @@ def trigger_staff(params):
     elif set(required_params) != set(params.keys()):
         print("Required params not matched.")
     server = connect_jenkins()
-    print(params)
 
     print(
         f"\n<UNK> Triggering 💻 Staff Web App build:{params['environment']}  with parameters:"
     )
+    print(params)
+
     i = input("Type proceed to continue:")
     if i != "proceed":
         return
@@ -270,10 +272,10 @@ def trigger_member(params):
     elif set(required_params) != set(params.keys()):
         print("Required params not matched.")
     server = connect_jenkins()
-    print(params)
     print(
         f"\n<UNK> Triggering 💻 Member Web App:{params['environment']}  with parameters:"
     )
+    print(params)
     i = input("Type proceed to continue:")
     if i != "proceed":
         return
@@ -281,37 +283,40 @@ def trigger_member(params):
     print("Triggered build for member")
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
+    deployment_config = {
+        "p360": {
+            "environment": "BIOPEAK STG",
+            "tag": "2519",
+            "migrate": True,
+            "maintenance": False,
+            "deploy_prebuilt_image": False,
+            "build_only": False,
+        },
+        "staff_web_app": {
+            "environment": "BIOPEAK STG",
+            "flutter_version": "3.38.3",
+            "tag": "1127",
+            "reyakit_tag": "1510",
+            "version_no": "1.12.0",
+            "build_no": "1",
+            "maintenance": False,
+        },
+        "member_web_app": {
+            "environment": "BIOPEAK STG",
+            "flutter_version": "3.38.3",
+            "tag": "1148",
+            "reyakit_tag": "1510",
+            "version_no": "1.12.0",
+            "build_no": "1",
+            "maintenance": False,
+        },
+    }
 
-    # trigger_p360(
-    #     params={
-    #         "environment": "IHL STG",
-    #         "tag": "2519",
-    #         "migrate": True,
-    #         "maintenance": False,
-    #         "deploy_prebuilt_image": True,
-    #         "build_only": False,
-    #     }
-    # )
-    # trigger_staff(
-    #     params={
-    #         "environment": "RAFFLES STG",
-    #         "flutter_version": "3.38.3",
-    #         "tag": "1127",
-    #         "reyakit_tag": "1510",
-    #         "version_no": "1.12.0",
-    #         "build_no": "7",
-    #         "maintenance": False,
-    #     }
-    # )
-    # trigger_member(
-    #     params={
-    #         "environment": "RAFFLES STG",
-    #         "flutter_version": "3.38.3",
-    #         "tag": "1148",
-    #         "reyakit_tag": "1510",
-    #         "version_no": "1.12.0",
-    #         "build_no": "7",
-    #         "maintenance": False,
-    #     }
-    # )
+    for app_type, params in deployment_config.items():
+        if app_type == "p360":
+            trigger_p360(params=params)
+        elif app_type == "staff_web_app":
+            trigger_staff(params=params)
+        elif app_type == "member_web_app":
+            trigger_member(params=params)
