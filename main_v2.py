@@ -214,9 +214,12 @@ def trigger_p360(params):
 
     server = connect_jenkins()
     print(
-        f"\n<UNK> Triggering 🌐 P360 build:{params['environment']}  with parameters:"
+        f"\n Triggering {Fore.RED}🌐 P360 build:{params['environment']} {Style.RESET_ALL}  with parameters:"
     )
-    print(params)
+    for k, v in params.items():
+        print(
+            f"   - {Fore.CYAN}{k}{Style.RESET_ALL}: {Fore.GREEN}{v}{Style.RESET_ALL}"
+        )
 
     i = input("Type proceed to continue:")
     if i != "proceed":
@@ -244,9 +247,12 @@ def trigger_staff(params):
     server = connect_jenkins()
 
     print(
-        f"\n<UNK> Triggering 💻 Staff Web App build:{params['environment']}  with parameters:"
+        f"\n {Fore.RED}Triggering 💻 Staff Web App build:{params['environment']}  with parameters:{Style.RESET_ALL}"
     )
-    print(params)
+    for k, v in params.items():
+        print(
+            f"   - {Fore.CYAN}{k}{Style.RESET_ALL}: {Fore.GREEN}{v}{Style.RESET_ALL}"
+        )
 
     i = input("Type proceed to continue:")
     if i != "proceed":
@@ -273,9 +279,12 @@ def trigger_member(params):
         print("Required params not matched.")
     server = connect_jenkins()
     print(
-        f"\n<UNK> Triggering 💻 Member Web App:{params['environment']}  with parameters:"
+        f"\n {Fore.RED}Triggering 💻 Member Web App:{params['environment']}  with parameters:{Style.RESET_ALL}"
     )
-    print(params)
+    for k, v in params.items():
+        print(
+            f"   - {Fore.CYAN}{k}{Style.RESET_ALL}: {Fore.GREEN}{v}{Style.RESET_ALL}"
+        )
     i = input("Type proceed to continue:")
     if i != "proceed":
         return
@@ -294,25 +303,24 @@ if __name__ == "__main__":
             "build_only": False,
         },
         "staff_web_app": {
-            "environment": "BIOPEAK STG",
+            "environment": "AURORLIFE STG",
             "flutter_version": "3.38.3",
-            "tag": "1127",
-            "reyakit_tag": "1510",
-            "version_no": "1.12.0",
-            "build_no": "1",
+            "tag": "1140",
+            "reyakit_tag": "1573",
+            "version_no": "1.13.0",
+            "build_no": "11",
             "maintenance": False,
         },
         "member_web_app": {
-            "environment": "BIOPEAK STG",
+            "environment": "AURORLIFE STG",
             "flutter_version": "3.38.3",
-            "tag": "1148",
-            "reyakit_tag": "1510",
-            "version_no": "1.12.0",
-            "build_no": "1",
+            "tag": "1169",
+            "reyakit_tag": "1573",
+            "version_no": "1.13.0",
+            "build_no": "11",
             "maintenance": False,
         },
     }
-
     for app_type, params in deployment_config.items():
         if app_type == "p360":
             trigger_p360(params=params)
