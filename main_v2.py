@@ -227,6 +227,19 @@ def trigger_p360(params):
     queue_id = server.build_job("🌐 P360", parameters=params)
     print("Triggered build for p360")
 
+    # build_number = None
+    #
+    # while True:
+    #     queue_item = server.get_queue_item(queue_id)
+    #
+    #     if "executable" in queue_item:
+    #         build_number = queue_item["executable"]["number"]
+    #         print(f"Build started: #{build_number}")
+    #         break
+    #
+    #     print("Waiting for build to start...")
+    #     time.sleep(3)
+
 
 def trigger_staff(params):
     required_params = set(
@@ -295,29 +308,29 @@ def trigger_member(params):
 if __name__ == "__main__":
     deployment_config = {
         "p360": {
-            "environment": "BIOPEAK STG",
-            "tag": "2519",
+            "environment": "MH STG",
+            "tag": "2637",
             "migrate": True,
             "maintenance": False,
-            "deploy_prebuilt_image": False,
+            "deploy_prebuilt_image": True,
             "build_only": False,
         },
         "staff_web_app": {
-            "environment": "AURORLIFE STG",
+            "environment": "MH STG",
             "flutter_version": "3.38.3",
             "tag": "1140",
             "reyakit_tag": "1573",
             "version_no": "1.13.0",
-            "build_no": "11",
+            "build_no": "5",
             "maintenance": False,
         },
         "member_web_app": {
-            "environment": "AURORLIFE STG",
+            "environment": "MH STG",
             "flutter_version": "3.38.3",
             "tag": "1169",
             "reyakit_tag": "1573",
             "version_no": "1.13.0",
-            "build_no": "11",
+            "build_no": "5",
             "maintenance": False,
         },
     }

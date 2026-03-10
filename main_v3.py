@@ -2,9 +2,14 @@
 import os
 import sys
 import time
+from urllib.parse import quote
 
 import jenkins
+import requests
 from colorama import Fore, Style, init
+
+from jira_issue_tracker import get_issue_by_ticket
+from text_to_dict import convert_to_dict
 
 # ======== CONFIGURE THESE ========
 JENKINS_URL = os.environ["JENKINS_URL"]
@@ -119,6 +124,33 @@ def prompt_for_parameters(params):
     return user_inputs
 
 
+def is_input_action_pending(job_name, build_number):
+    url = f"{JENKINS_URL}/job/{job_name}/{build_number}/wfapi/pendingInputActions"
+    r = requests.get(url, auth=(USERNAME, API_TOKEN))
+    # print(r.json())
+    r.raise_for_status()
+
+    return bool(r.json())
+
+
+def input_proceed(job_name, build_number):
+    # Send approval with parameter
+    data = {
+        "json": '{"parameter":[{"name":"confirm","value":true}]}',
+    }
+    params = {
+        "inputId": "UserConfirmation",
+    }
+    response = requests.post(
+        url=f"{JENKINS_URL}/job/{job_name}/{build_number}/wfapi/inputSubmit",
+        auth=(USERNAME, API_TOKEN),
+        data=data,
+        params=params,
+    )
+    response.raise_for_status()
+    print("Input proceed successful")
+
+
 def wait_for_build(server, job_name, queue_id):
     """Wait for the build to start and complete, showing colored status."""
     print("\n⏳ Waiting for build to start...")
@@ -130,13 +162,27 @@ def wait_for_build(server, job_name, queue_id):
             print(f"🚀 Build #{build_number} started!")
         time.sleep(2)
 
+    # Wait for input step
+    while True:
+        is_input_pending = is_input_action_pending(
+            job_name=job_name, build_number=build_number
+        )
+        if is_input_pending:
+            break
+        else:
+            time.sleep(3)
+
+    # Send input
+    input_proceed(job_name=job_name, build_number=build_number)
+
     # Wait for build completion
+    print("Waiting for build to complete")
     while True:
         build_info = server.get_build_info(job_name, build_number)
         if build_info["building"]:
             sys.stdout.write(".")
             sys.stdout.flush()
-            time.sleep(5)
+            time.sleep(10)
         else:
             result = build_info["result"]
             if result == "SUCCESS":
@@ -155,47 +201,6 @@ def wait_for_build(server, job_name, queue_id):
             break
 
 
-def main():
-    server = connect_jenkins()
-    job_name = choose_job(TARGET_JOBS)
-    print(f"\n📦 Selected job: {Fore.CYAN}{job_name}{Style.RESET_ALL}")
-
-    params = get_job_parameters(server, job_name)
-    if not params:
-        print(
-            f"⚠️ No parameters found — Triggering build:{job_name} without parameters."
-        )
-        i = input("Type proceed to continue:")
-        if i != "proceed":
-            return
-        queue_id = server.build_job(job_name)
-    else:
-        user_inputs = prompt_for_parameters(params)
-        print(f"\n🚀 Triggering build:{job_name}  with parameters:")
-        for k, v in user_inputs.items():
-            print(
-                f"   - {Fore.CYAN}{k}{Style.RESET_ALL}: {Fore.GREEN}{v}{Style.RESET_ALL}"
-            )
-
-        while True:
-            i = input("Type proceed to continue:")
-            if not i:
-                continue
-            if i == "proceed":
-                break
-            elif i != "proceed":
-                print("Invalid input. Aborting build.")
-                return
-
-        print(job_name)
-        print(user_inputs)
-        queue_id = server.build_job(job_name, parameters=user_inputs)
-
-    print("Triggered build")
-
-    # wait_for_build(server, job_name, queue_id)
-
-
 def trigger_p360(params):
     required_params = set(
         {
@@ -208,9 +213,9 @@ def trigger_p360(params):
         }.keys()
     )
     if len(required_params) != len(params):
-        print("Required params not found.")
+        raise Exception("Required params not found.")
     elif set(required_params) != set(params.keys()):
-        print("Required params not matched.")
+        raise Exception("Required params not matched.")
 
     server = connect_jenkins()
     print(
@@ -224,21 +229,11 @@ def trigger_p360(params):
     i = input("Type proceed to continue:")
     if i != "proceed":
         return
-    queue_id = server.build_job("🌐 P360", parameters=params)
+    job_name = "🌐 P360"
+    queue_id = server.build_job(job_name, parameters=params)
     print("Triggered build for p360")
 
-    # build_number = None
-    #
-    # while True:
-    #     queue_item = server.get_queue_item(queue_id)
-    #
-    #     if "executable" in queue_item:
-    #         build_number = queue_item["executable"]["number"]
-    #         print(f"Build started: #{build_number}")
-    #         break
-    #
-    #     print("Waiting for build to start...")
-    #     time.sleep(3)
+    wait_for_build(job_name=job_name, queue_id=queue_id, server=server)
 
 
 def trigger_staff(params):
@@ -254,9 +249,9 @@ def trigger_staff(params):
         }.keys()
     )
     if len(required_params) != len(params):
-        print("Required params not found.")
+        raise Exception("Required params not found.")
     elif set(required_params) != set(params.keys()):
-        print("Required params not matched.")
+        raise Exception("Required params not matched.")
     server = connect_jenkins()
 
     print(
@@ -287,9 +282,9 @@ def trigger_member(params):
         }.keys()
     )
     if len(required_params) != len(params):
-        print("Required params not found.")
+        raise Exception("Required params not found.")
     elif set(required_params) != set(params.keys()):
-        print("Required params not matched.")
+        raise Exception("Required params not matched.")
     server = connect_jenkins()
     print(
         f"\n {Fore.RED}Triggering 💻 Member Web App:{params['environment']}  with parameters:{Style.RESET_ALL}"
@@ -305,23 +300,67 @@ def trigger_member(params):
     print("Triggered build for member")
 
 
+def trigger_release_pipeline(params):
+    job_name = "Release Pipeline"
+    required_params = set(
+        {
+            "applications": "staff-web-app",
+            "region": "centralindia",
+            "environment": "qa",
+            "tenant": "reya",
+            "maintenance": "end",
+            "backup": False,
+        }.keys()
+    )
+    if len(required_params) != len(params):
+        raise Exception("Required params not found.")
+    elif set(required_params) != set(params.keys()):
+        raise Exception("Required params not matched.")
+    server = connect_jenkins()
+    print(
+        f"\n {Fore.RED}Triggering {job_name}:{params['environment']}  with parameters:{Style.RESET_ALL}"
+    )
+    for k, v in params.items():
+        print(
+            f"   - {Fore.CYAN}{k}{Style.RESET_ALL}: {Fore.GREEN}{v}{Style.RESET_ALL}"
+        )
+    i = input("Type proceed to continue:")
+    if i != "proceed":
+        return
+    queue_id = server.build_job(job_name, parameters=params)
+    print(f"Triggered build for {job_name}")
+    wait_for_build(server=server, queue_id=queue_id, job_name=job_name)
+
+
 if __name__ == "__main__":
+    # ticket_id = input("Enter ticket ID:")
+    # description = get_issue_by_ticket(ticket_id=ticket_id)
+
     deployment_config = {
         "p360": {
             "environment": "RAFFLES STG",
-            "tag": "2636",
+            "tag": "2640",
             "migrate": True,
             "maintenance": False,
             "deploy_prebuilt_image": False,
             "build_only": False,
         },
+        "staff_web_app": {
+            "environment": "RAFFLES STG",
+            "flutter_version": "3.38.3",
+            "tag": "1141",
+            "reyakit_tag": "1575",
+            "version_no": "1.13.0",
+            "build_no": "17",
+            "maintenance": False,
+        },
         "member_web_app": {
             "environment": "RAFFLES STG",
             "flutter_version": "3.38.3",
             "tag": "1170",
-            "reyakit_tag": "1573",
+            "reyakit_tag": "1575",
             "version_no": "1.13.0",
-            "build_no": "12",
+            "build_no": "17",
             "maintenance": False,
         },
     }
@@ -332,3 +371,5 @@ if __name__ == "__main__":
             trigger_staff(params=params)
         elif app_type == "member_web_app":
             trigger_member(params=params)
+        elif app_type == "release_pipeline":
+            trigger_release_pipeline(params=params)
