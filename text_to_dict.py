@@ -3,69 +3,95 @@ import json
 import ollama
 
 SYSTEM_PROMPT = """
-You are a configuration formatter.
+You are a deployment configuration formatter.
 
-Whenever I paste raw deployment details in a free-text format (tenant, environment, P360, Staff Web App, Member Web App), your task is to convert them into python Dictionary.
+Your task is to convert raw deployment text into a json:
 
----
+The input text contains:
+- Tenant Name
+- Environment
+- P360
+- Staff Web App
+- Member Web App
 
-### 🧩 Parameter: environment
+You must extract the values and construct the json.
 
-You must map the tenant + environment to **one of the following allowed values ONLY**. Ex: Tenant: *AL* + Environment: *Stg*/ *STG* = AURORLIFE STG.
+--------------------------------------------------
 
-1. LL QA
-2. LL STG
-3. LL PROD
-4. REYA DEV
-5. REYA QA
-6. REYA PROD
-7. IHL QA
-8. IHL STG
-9. IHL PROD
-10. BIOPEAK STG
-11. BIOPEAK PROD
-12. AURORLIFE STG
-13. AURORLIFE PROD
-14. MH QA
-15. MH STG
-16. MH PROD
-17. CORE PROD
-18. ATTUNE STG
-19. ATTUNE PROD
-20. RAFFLES STG
-21. RAFFLES PROD
-22. CERENEO QA
-23. CERENEO STG
-24. CERENEO PROD
+TENANT → ENVIRONMENT MAPPING
 
----
+Use the following tenant mappings:
 
-### 🚨 Strict Rules
+Love.Life OR LL → LL
+Aurora Life OR AL → AURORLIFE
+Attune → ATTUNE
+Raffles → RAFFLES
+MH OR Morrow → MH
+Biopeak → BIOPEAK
+Cereneo → CERENEO
+IHL → IHL
+Reya -> REYA
 
-* You **must** select the environment from the list above.
-* If the correct environment **cannot be determined with certainty**, **DO NOT GUESS**.
-* In that case, respond with **only this error message**:
+--------------------------------------------------
 
-```
-ERROR: Unable to determine a valid environment from the provided input.
-```
+ENVIRONMENT NORMALIZATION
 
----
+Environment values in input may appear as:
 
-### General Rules
+STG
+Stg
+Staging
+stage
+PROD
+Production
+Prod
+QA
+Dev
 
-* Output **only JSON strings**, no explanations, no Python dictionaries.
-* Always generate **three JSON strings**: `p360`, `staff_web_app`, and `member_web_app`.
-* Remove leading `v` from version numbers.
-* Convert `TRUE/FALSE` to JSON booleans (`true` / `false`).
-* Use these defaults unless explicitly overridden:
+Normalize them to:
 
-  * `maintenance = false`
-  * `deploy_prebuilt_image = false` (P360 only)
-  * `build_only = false` (P360 only)
-  * `flutter_version = "3.38.3"` (Staff & Member)
+STG
+PROD
+QA
+DEV
 
----
+--------------------------------------------------
+
+FINAL ENVIRONMENT FORMAT
+
+Combine tenant + environment using:
+
+<TENANT_CODE> <ENV>
+
+Examples:
+
+Love.Life + STG → LL STG
+Aurora Life + STG → AURORLIFE STG
+Raffles + Production → RAFFLES PROD
+MH + Staging → MH STG
+Cereneo + QA → CERENEO QA
+
+--------------------------------------------------
+
+DATA EXTRACTION RULES
+
+1. Remove leading "v" from version numbers.
+Example:
+v1.13.0 → 1.13.0
+
+2. Convert TRUE / YES → true
+
+3. Convert FALSE / NO → false
+
+4. Default values:
+
+maintenance = False  
+deploy_prebuilt_image = False  
+build_only = False  
+flutter_version = "3.38.3"
+
+--------------------------------------------------
+
 
 ### Output Formats
 1. If all deployments are given
@@ -84,7 +110,7 @@ ERROR: Unable to determine a valid environment from the provided input.
         "flutter_version": "3.38.3",
         "tag": "<TAG>,
         "reyakit_tag": "<REYAKIT_TAG>",
-        "version_no": "<VERSION>",
+        "version_no": "<VERSION>", # Remove leading v
         "build_no": <BUILD_NO>,
         "maintenance": false
     },
@@ -93,10 +119,10 @@ ERROR: Unable to determine a valid environment from the provided input.
         "flutter_version": "3.38.3",
         "tag": <TAG>,
         "reyakit_tag": "<REYAKIT_TAG>",
-        "version_no": "<VERSION>",
+        "version_no": "<VERSION>", # remove leading v
         "build_no": <BUILD_NO>,
         "maintenance": false
-    },
+    }
 }
 ```
 
@@ -120,17 +146,20 @@ ERROR: Unable to determine a valid environment from the provided input.
         "version_no": "<VERSION>",
         "build_no": <BUILD_NO>,
         "maintenance": false
-    },
+    }
 }
 ```
 
-If the tag is not present or P360/Staff Web App/Member web app : NO is given you can ignore that specific deployment_config like removing p360 key entirely from dict.
+If the tag is not present or P360/Staff Web App/Member web app : NO is given you can ignore that specific deployment_config like removing p360 key entirely from json.
 
----
+IMPORTANT RULES
 
-After this, I will paste raw text. Convert it accordingly into **JSON strings only**.
-Output only VALID JSON.
-Do not output python code or backticks.
+• Output only VALID JSON.
+• Do not output python code or backticks.  
+• Do NOT explain anything  
+• Do NOT add markdown  
+• Do NOT add comments  
+• If a section (P360 / Staff / Member) is missing, omit that block from the json
 """
 
 
@@ -149,30 +178,31 @@ def convert_to_dict(text):
         .strip()
     )
 
-    # print(response_string)
+    print(response_string)
     # print(python_dict)
     python_dict = json.loads(response_string)
     return python_dict
 
 
 raw_text = """
-Tenant Name:Raffles 
+Tenant Name:  AL 
+Environment : STG 
 
-Environment: Staging 
+P360 : 
+Tag : 2641
+Is database migration required: TRUE
 
-p360
-	Required: Yes 
-	Tag: 2636
-	Is database migration required: yes
-
+Staff Web App:
+Staff web app tag: 1141
+Reyakit tag: 1576
+Version number: v1.13.0
+Build number: 8
  
-
-Member web app
-	Required: Yes 
-	Member web app tag: 1170
-	Reyakit tag: 1573
-	Version number: 1.13.0
-	Build number: 12
+Member web app : 
+Member web app tag: 1170
+Reyakit tag: 1576
+Version number: v1.13.0
+Build number: 8
 
 [~accountid:557058:53b7ac09-9f07-44b2-88f3-da128a1b64aa] [~accountid:61f8a9048d9e3c00688e63cd] [~accountid:712020:596d07ff-07bd-401b-86ef-9f74a06e5830] 
 """
