@@ -25,6 +25,7 @@ def main():
         "Attune",
         "Raffles",
         "LL",
+        "Cereneo",
     ]
     for i, tenant_name in enumerate(tenant_options, 1):
         print(f"{i}. {tenant_name}")

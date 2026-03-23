@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import subprocess
 import sys
 import time
 from urllib.parse import quote
@@ -199,6 +200,7 @@ def wait_for_build(server, job_name, queue_id):
             print(
                 f"\n✅ Build #{build_number} completed with status: {color}{result}{Style.RESET_ALL}"
             )
+            subprocess.run(["say", f"Build {job_name} completed"])
             print(f"🔗 URL: {build_info['url']}")
             break
 
@@ -363,7 +365,10 @@ def main():
     parallel_tasks = []
 
     if "staff_web_app" in deployment_config:
-        if deployment_config["staff_web_app"]:
+        if (
+            deployment_config["staff_web_app"]
+            and deployment_config["staff_web_app"]["reyakit_tag"]
+        ):
             parallel_tasks.append(
                 lambda: trigger_staff(
                     params=deployment_config["staff_web_app"]
@@ -371,7 +376,10 @@ def main():
             )
 
     if "member_web_app" in deployment_config:
-        if deployment_config["member_web_app"]:
+        if (
+            deployment_config["member_web_app"]
+            and deployment_config["member_web_app"]["reyakit_tag"]
+        ):
             parallel_tasks.append(
                 lambda: trigger_member(
                     params=deployment_config["member_web_app"]

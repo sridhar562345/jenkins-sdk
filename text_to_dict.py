@@ -31,6 +31,7 @@ Biopeak → BIOPEAK
 Cereneo → CERENEO
 IHL → IHL
 Reya -> REYA
+Core -> CORE
 
 --------------------------------------------------
 
@@ -150,7 +151,19 @@ flutter_version = "3.38.3"
 }
 ```
 
-If the tag is not present or P360/Staff Web App/Member web app : NO is given you can ignore that specific deployment_config like removing p360 key entirely from json.
+3.If the tag is not present or P360/Staff Web App/Member web app : NO or not provided you can ignore that specific deployment_config like removing p360 key entirely from json.
+```
+{
+    "p360": {
+        "environment": "<ENV_FROM_ALLOWED_LIST>",
+        "tag": <TAG>,
+        "migrate": <true|false>,
+        "maintenance": false,
+        "deploy_prebuilt_image": false,
+        "build_only": false
+    }
+}
+```
 
 IMPORTANT RULES
 
@@ -178,7 +191,7 @@ def convert_to_dict(text):
         .strip()
     )
 
-    print(response_string)
+    # print(response_string)
     # print(python_dict)
     python_dict = json.loads(response_string)
     return python_dict

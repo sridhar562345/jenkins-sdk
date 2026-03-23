@@ -1,3 +1,3 @@
 import subprocess
 
-subprocess.run(["say", "Your training job is finished"])
+subprocess.run(["say", "Your 🌐 P360 job is finished"])
