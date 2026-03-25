@@ -200,7 +200,14 @@ def wait_for_build(server, job_name, queue_id):
             print(
                 f"\n✅ Build #{build_number} completed with status: {color}{result}{Style.RESET_ALL}"
             )
-            subprocess.run(["say", f"Build {job_name} completed"])
+            subprocess.run(["say", f"Build {job_name} {result}"])
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    f'display notification "Build {job_name} {result}" with title "Jenkins {job_name}" sound name "Glass"',
+                ]
+            )
             print(f"🔗 URL: {build_info['url']}")
             break
 
