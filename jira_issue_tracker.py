@@ -29,7 +29,7 @@ def search_issues():
 
 def get_issue_by_ticket(ticket_id):
     issue = jira.issue(id=ticket_id)
-    return issue.fields.description
+    return issue.fields.summary + "\n\n" + issue.fields.description
 
 
 if __name__ == "__main__":

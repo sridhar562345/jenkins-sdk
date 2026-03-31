@@ -71,6 +71,7 @@ Aurora Life + STG → AURORLIFE STG
 Raffles + Production → RAFFLES PROD
 MH + Staging → MH STG
 Cereneo + QA → CERENEO QA
+BLBG + STG -> BLBG STG
 
 --------------------------------------------------
 
@@ -198,25 +199,14 @@ def convert_to_dict(text):
 
 
 raw_text = """
-Tenant Name:  AL 
-Environment : STG 
-
-P360 : 
-Tag : 2641
-Is database migration required: TRUE
+Tenant Name:  REYA 
+Environment : PROD 
 
 Staff Web App:
-Staff web app tag: 1141
-Reyakit tag: 1576
-Version number: v1.13.0
-Build number: 8
- 
-Member web app : 
-Member web app tag: 1170
-Reyakit tag: 1576
-Version number: v1.13.0
-Build number: 8
-
+Staff web app tag: 1150
+Reyakit tag: 1590
+Version number: 1.13.1
+Build number: 1
 [~accountid:557058:53b7ac09-9f07-44b2-88f3-da128a1b64aa] [~accountid:61f8a9048d9e3c00688e63cd] [~accountid:712020:596d07ff-07bd-401b-86ef-9f74a06e5830] 
 """
 

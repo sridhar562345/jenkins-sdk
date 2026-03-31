@@ -208,6 +208,9 @@ def wait_for_build(server, job_name, queue_id):
                     f'display notification "Build {job_name} {result}" with title "Jenkins {job_name}" sound name "Glass"',
                 ]
             )
+            if result != "SUCCESS":
+                raise Exception(f"Build failed with status: {result}")
+
             print(f"🔗 URL: {build_info['url']}")
             break
 
@@ -349,8 +352,14 @@ def trigger_release_pipeline(params):
 
 def main():
     ticket_id = input("Enter ticket ID:")
-    description = get_issue_by_ticket(ticket_id=ticket_id)
-    print(description)
+    if ticket_id:
+        description = get_issue_by_ticket(ticket_id=ticket_id)
+        print(description)
+    else:
+        print(
+            "Enter/Paste your description. Ctrl-D or Ctrl-Z ( windows ) to save it."
+        )
+        description = sys.stdin.read()
 
     deployment_config = convert_to_dict(text=description)
     print("*" * 100)
