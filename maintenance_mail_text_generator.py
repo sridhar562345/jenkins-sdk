@@ -3,7 +3,7 @@ Alert Regarding Downtime for {tenant_name} Release {release_version}
 
 Hi All,
 
-We plan to upgrade our azure USEAST-2 setup with the {release_version} version of the {tenant_name} application on {date_string}, around {start_time_string} IST. The servers will be down and under maintenance for {maintenance_string}.
+We plan to upgrade our azure {setup_name} setup with the {release_version} version of the {tenant_name} application on {date_string}, around {start_time_string} IST. The servers will be down and under maintenance for {maintenance_string}.
 
 Date: {date_string}
 Time: {start_end_time_string} IST
@@ -26,6 +26,7 @@ def main():
         "Raffles",
         "LL",
         "Cereneo",
+        "Blue Bulgaria",
     ]
     for i, tenant_name in enumerate(tenant_options, 1):
         print(f"{i}. {tenant_name}")
@@ -38,6 +39,19 @@ def main():
         return
 
     tenant_name = tenant_options[int(tenant_name) - 1]
+
+    setup_options = ["USEAST-2", "WESTEUROPE", "ap-southeast-1"]
+    for i, setup_name in enumerate(setup_options, 1):
+        print(f"{i}. {setup_name}")
+
+    setup_name = input("select tenant number: ")
+    if not setup_name.isdigit() or int(setup_name) not in range(
+        1, len(setup_options) + 1
+    ):
+        print("Invalid tenant number.")
+        return
+
+    setup_name = setup_options[int(setup_name) - 1]
 
     date_string = input("Enter date string (e.g. 28th Jan 2026): ")
     start_time_string = input(
@@ -53,6 +67,7 @@ def main():
     print(
         US_EAST_2_BODY.format(
             tenant_name=tenant_name,
+            setup_name=setup_name,
             date_string=date_string,
             start_time_string=start_time_string,
             maintenance_string=maintenance_string,

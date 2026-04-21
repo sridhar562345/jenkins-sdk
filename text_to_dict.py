@@ -32,6 +32,7 @@ Cereneo → CERENEO
 IHL → IHL
 Reya -> REYA
 Core -> CORE
+BLBG or Blbg -> BLBG
 
 --------------------------------------------------
 
@@ -72,6 +73,7 @@ Raffles + Production → RAFFLES PROD
 MH + Staging → MH STG
 Cereneo + QA → CERENEO QA
 BLBG + STG -> BLBG STG
+BLBG + PROD -> BLBG PROD
 
 --------------------------------------------------
 
