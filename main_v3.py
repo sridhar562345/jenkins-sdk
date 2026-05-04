@@ -250,7 +250,7 @@ def trigger_p360(params):
     wait_for_build(job_name=job_name, queue_id=queue_id, server=server)
 
 
-def trigger_staff(params):
+def trigger_staff(params, job_name="💻 Staff Web App"):
     required_params = set(
         {
             "environment": "RAFFLES STG",
@@ -267,7 +267,6 @@ def trigger_staff(params):
     elif set(required_params) != set(params.keys()):
         raise Exception("Required params not matched.")
     server = connect_jenkins()
-    job_name = "💻 Staff Web App"
 
     print(
         f"\n {Fore.RED}Triggering {job_name} build:{params['environment']}  with parameters:{Style.RESET_ALL}"
@@ -285,7 +284,7 @@ def trigger_staff(params):
     wait_for_build(server=server, queue_id=queue_id, job_name=job_name)
 
 
-def trigger_member(params):
+def trigger_member(params, job_name="💻 Member Web App"):
     required_params = set(
         {
             "environment": "RAFFLES STG",
@@ -301,7 +300,7 @@ def trigger_member(params):
         raise Exception("Required params not found.")
     elif set(required_params) != set(params.keys()):
         raise Exception("Required params not matched.")
-    job_name = "💻 Member Web App"
+
     server = connect_jenkins()
     print(
         f"\n {Fore.RED}Triggering {job_name}:{params['environment']}  with parameters:{Style.RESET_ALL}"
