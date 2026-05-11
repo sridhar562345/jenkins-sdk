@@ -1,9 +1,11 @@
 import os
+import re
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+import pytz
 import questionary
 from questionary import Style
 
@@ -31,33 +33,36 @@ TENANT_OPTIONS = [
     "LL",
     "Cereneo",
     "Blue Bulgaria",
+    "Core",
 ]
 
 SETUP_OPTIONS = ["USEAST-2", "WESTEUROPE", "ap-southeast-1"]
 
-# IST offset from UTC in hours
-TIMEZONE_OFFSETS_FROM_UTC = {
-    "IST": 5.5,
-    "EET": 3.0,
-    "CET": 2.0,
-    "UTC": 0.0,
-    "EST": -4.0,
-    "PST": -7.0,
-    "SGT": 8.0,
+# Display label → IANA timezone name
+# pytz resolves PST vs PDT, EST vs EDT, CET vs CEST etc. automatically from the date
+TIMEZONE_MAP = {
+    "IST": "Asia/Kolkata",
+    "SGT": "Asia/Singapore",
+    "UAE": "Asia/Dubai",  # Gulf Standard Time, UTC+4, no DST
+    "EET": "Europe/Helsinki",  # Eastern European (handles EEST in summer)
+    "CET": "Europe/Berlin",  # Central European (handles CEST in summer)
+    "UTC": "UTC",
+    "US/Pacific": "America/Los_Angeles",  # PST / PDT
 }
 
-# Timezone defaults per tenant — add more zones alongside IST as needed
+# Timezone defaults per tenant
 TENANT_DEFAULT_TZ = {
-    "Morrow Health": ["IST", "SGT"],
+    "LL": ["IST", "US/Pacific"],  # PST / PDT
     "Reya": ["IST"],
-    "IHL": ["IST", ""],
+    "IHL": ["IST", "UAE"],
+    "Auroralife": ["IST", "US/Pacific"],  # PDT / PST
     "Biopeak": ["IST"],
-    "Auroralife": ["IST"],
-    "Attune": ["IST"],
-    "Raffles": ["IST"],
-    "LL": ["IST"],
-    "Cereneo": ["IST"],
-    "Blue Bulgaria": ["IST"],
+    "Morrow Health": ["IST", "SGT"],
+    "Core": ["IST"],
+    "Attune": ["IST", "US/Pacific"],  # PST / PDT
+    "Raffles": ["IST", "SGT"],
+    "Cereneo": ["IST", "CET"],
+    "Blue Bulgaria": ["IST", "EET"],
 }
 
 EMAIL_BODY_TEMPLATE = """\
@@ -76,37 +81,80 @@ Regards,
 Sridhar
 """
 
+DATE_FORMATS = [
+    "%d %b %Y",  # 12 May 2026
+    "%d %B %Y",  # 12 May 2026 (full month name)
+    "%d/%m/%Y",  # 12/05/2026
+    "%Y-%m-%d",  # 2026-05-12
+]
 
-def parse_time(time_str: str) -> datetime:
-    for fmt in ("%I:%M %p", "%I:%M%p", "%H:%M"):
+TIME_FORMATS = [
+    "%I:%M %p",  # 9:00 AM
+    "%I:%M%p",  # 9:00AM
+    "%H:%M",  # 09:00 / 14:30
+]
+
+
+def parse_date(date_str: str) -> datetime.date:
+    """Parse a date string, stripping ordinal suffixes like 'th', 'st', 'nd', 'rd'."""
+    cleaned = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", date_str.strip())
+    for fmt in DATE_FORMATS:
         try:
-            return datetime.strptime(time_str.strip(), fmt)
+            return datetime.strptime(cleaned, fmt).date()
         except ValueError:
             continue
     raise ValueError(
-        f"Could not parse time: '{time_str}'. Use format like '9:00 AM' or '14:30'."
+        f"Could not parse date: '{date_str}'. "
+        "Try '12 May 2026', '12th May 2026', or '12/05/2026'."
     )
 
 
-def convert_time(dt: datetime, from_tz: str, to_tz: str) -> datetime:
-    from_offset = TIMEZONE_OFFSETS_FROM_UTC[from_tz]
-    to_offset = TIMEZONE_OFFSETS_FROM_UTC[to_tz]
-    delta_hours = to_offset - from_offset
-    return dt + timedelta(hours=delta_hours)
+def parse_time(time_str: str) -> datetime.time:
+    for fmt in TIME_FORMATS:
+        try:
+            return datetime.strptime(time_str.strip(), fmt).time()
+        except ValueError:
+            continue
+    raise ValueError(
+        f"Could not parse time: '{time_str}'. Use '9:00 AM' or '14:30'."
+    )
+
+
+def make_aware(
+    date: datetime.date, time: datetime.time, tz_label: str
+) -> datetime:
+    tz = pytz.timezone(TIMEZONE_MAP[tz_label])
+    return tz.localize(datetime.combine(date, time))
+
+
+def convert_and_format(
+    dt_aware: datetime, to_tz_label: str
+) -> tuple[str, str]:
+    """Return (formatted time string, resolved abbreviation e.g. PDT)."""
+    tz = pytz.timezone(TIMEZONE_MAP[to_tz_label])
+    converted = dt_aware.astimezone(tz)
+    abbrev = converted.strftime("%Z")  # PDT, EDT, CEST, etc.
+    time_str = converted.strftime("%I:%M %p").lstrip("0")
+    return time_str, abbrev
 
 
 def build_timezone_block(
-    start_str: str, end_str: str, timezones: list[str]
+    date: datetime.date,
+    start_str: str,
+    end_str: str,
+    tz_labels: list[str],
 ) -> str:
-    start_dt = parse_time(start_str)
-    end_dt = parse_time(end_str)
+    start_ist = make_aware(date, parse_time(start_str), "IST")
+    end_ist = make_aware(date, parse_time(end_str), "IST")
+
     lines = []
-    for tz in timezones:
-        s = convert_time(start_dt, "IST", tz)
-        e = convert_time(end_dt, "IST", tz)
-        lines.append(
-            f"{tz} - {s.strftime('%I:%M %p').lstrip('0')} - {e.strftime('%I:%M %p').lstrip('0')}"
-        )
+    for label in tz_labels:
+        s_time, s_abbrev = convert_and_format(start_ist, label)
+        e_time, _ = convert_and_format(end_ist, label)
+        # Show the resolved abbreviation (PDT/PST, EDT/EST, CEST/CET…)
+        display = s_abbrev if s_abbrev not in ("LMT", "") else label
+        lines.append(f"{display} - {s_time} - {e_time}")
+
     return "\n".join(lines)
 
 
@@ -174,6 +222,12 @@ def main() -> None:
     if not date_string:
         return
 
+    try:
+        parsed_date = parse_date(date_string)
+    except ValueError as e:
+        print(f"\n[!] {e}")
+        return
+
     start_time_string = questionary.text(
         "Start time (IST):",
         placeholder="e.g. 9:00 AM",
@@ -198,8 +252,8 @@ def main() -> None:
     if not maintenance_string:
         return
 
-    # Timezone selection — pre-tick defaults for the chosen tenant
-    all_tz = list(TIMEZONE_OFFSETS_FROM_UTC.keys())
+    # Timezone selection — pre-tick tenant defaults
+    all_tz = list(TIMEZONE_MAP.keys())
     default_tz = TENANT_DEFAULT_TZ.get(tenant_name, ["IST"])
     selected_tz = questionary.checkbox(
         "Timezones to include in email:",
@@ -211,23 +265,18 @@ def main() -> None:
     if not selected_tz:
         selected_tz = default_tz
 
-    # Always keep IST first
-    if "IST" not in selected_tz:
-        selected_tz = ["IST"] + selected_tz
-    else:
-        selected_tz = ["IST"] + [tz for tz in selected_tz if tz != "IST"]
+    # IST always first
+    selected_tz = ["IST"] + [tz for tz in selected_tz if tz != "IST"]
 
     start_end_time_string = f"{start_time_string} - {end_time_string}"
 
     try:
         timezone_block = build_timezone_block(
-            start_time_string, end_time_string, selected_tz
+            parsed_date, start_time_string, end_time_string, selected_tz
         )
     except ValueError as e:
         print(f"\n[!] Timezone conversion failed: {e}")
-        timezone_block = "\n".join(
-            f"{tz} - (could not compute)" for tz in selected_tz
-        )
+        return
 
     body = EMAIL_BODY_TEMPLATE.format(
         tenant_name=tenant_name,
