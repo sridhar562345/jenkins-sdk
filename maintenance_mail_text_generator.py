@@ -1,6 +1,7 @@
 import os
 import re
 import smtplib
+import curses
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -94,6 +95,114 @@ TIME_FORMATS = [
     "%H:%M",  # 09:00 / 14:30
 ]
 
+HOURS = [f"{h}" for h in range(1, 13)]  # 1 – 12
+MINUTES = ["00", "15", "30", "45"]
+AMPM = ["AM", "PM"]
+
+
+# ── curses time picker ────────────────────────────────────────────────────────
+
+
+def _draw_picker(win, cols, sel, label):
+    """Render three spinning columns: hour | minute | AM/PM."""
+    win.erase()
+    h, w = win.getmaxyx()
+
+    title = f"  {label}  (↑↓ navigate · ← → switch column · Enter confirm)"
+    win.addstr(0, 0, title[: w - 1])
+    win.addstr(1, 0, "─" * min(w - 1, 50))
+
+    col_labels = ["Hour", "Min", "AM/PM"]
+    col_values = [HOURS, MINUTES, AMPM]
+    col_widths = [8, 8, 8]
+    col_x = [2, 12, 22]
+
+    for ci, (clabel, cvals, cx) in enumerate(
+        zip(col_labels, col_values, col_x)
+    ):
+        win.addstr(2, cx, clabel)
+        idx = cols[ci]
+        prev_idx = (idx - 1) % len(cvals)
+        next_idx = (idx + 1) % len(cvals)
+
+        # row above (dimmed)
+        win.addstr(3, cx, cvals[prev_idx], curses.A_DIM)
+        # selected row (bold + highlighted if active column)
+        attr = curses.A_BOLD | (curses.A_REVERSE if ci == sel else 0)
+        win.addstr(4, cx, f"[{cvals[idx]}]" if ci == sel else cvals[idx], attr)
+        # row below (dimmed)
+        win.addstr(5, cx, cvals[next_idx], curses.A_DIM)
+
+    win.addstr(7, 0, "─" * min(w - 1, 50))
+    win.refresh()
+
+
+def _time_picker(stdscr, label: str, default: tuple[int, int, int]) -> str:
+    """
+    Interactive curses picker.
+    default = (hour_idx, minute_idx, ampm_idx) into HOURS/MINUTES/AMPM.
+    Returns a string like '9:30 AM'.
+    """
+    curses.curs_set(0)
+    stdscr.keypad(True)
+
+    cols = list(default)  # [hour_idx, min_idx, ampm_idx]
+    sel = 0  # active column
+
+    while True:
+        _draw_picker(stdscr, cols, sel, label)
+        key = stdscr.getch()
+
+        if key in (curses.KEY_UP,):
+            cols[sel] = (cols[sel] - 1) % len([HOURS, MINUTES, AMPM][sel])
+        elif key in (curses.KEY_DOWN,):
+            cols[sel] = (cols[sel] + 1) % len([HOURS, MINUTES, AMPM][sel])
+        elif key in (curses.KEY_LEFT,):
+            sel = (sel - 1) % 3
+        elif key in (curses.KEY_RIGHT,):
+            sel = (sel + 1) % 3
+        elif key in (10, 13, curses.KEY_ENTER):  # Enter
+            break
+        elif key == 27:  # Escape → None
+            return None
+
+    h = HOURS[cols[0]]
+    m = MINUTES[cols[1]]
+    ap = AMPM[cols[2]]
+    return f"{h}:{m} {ap}"
+
+
+def pick_time(label: str, default_str: str = "9:00 AM") -> str | None:
+    """
+    Launch the curses picker in a clean sub-window,
+    restore the terminal after, then print the chosen value.
+    """
+    # Parse default into column indices
+    try:
+        dt = datetime.strptime(default_str, "%I:%M %p")
+        h_idx = HOURS.index(str(dt.hour % 12 or 12))
+        m_idx = next(
+            (i for i, m in enumerate(MINUTES) if int(m) >= dt.minute), 0
+        )
+        ap_idx = 0 if dt.hour < 12 else 1
+    except Exception:
+        h_idx, m_idx, ap_idx = 0, 0, 0
+
+    result_box = [None]
+
+    def _run(stdscr):
+        result_box[0] = _time_picker(stdscr, label, (h_idx, m_idx, ap_idx))
+
+    curses.wrapper(_run)
+
+    chosen = result_box[0]
+    if chosen:
+        print(f"  {label} {chosen}")
+    return chosen
+
+
+# ── date / time helpers ───────────────────────────────────────────────────────
+
 
 def parse_date(date_str: str) -> datetime.date:
     """Parse a date string, stripping ordinal suffixes like 'th', 'st', 'nd', 'rd'."""
@@ -115,9 +224,7 @@ def parse_time(time_str: str) -> datetime.time:
             return datetime.strptime(time_str.strip(), fmt).time()
         except ValueError:
             continue
-    raise ValueError(
-        f"Could not parse time: '{time_str}'. Use '9:00 AM' or '14:30'."
-    )
+    raise ValueError(f"Could not parse time: '{time_str}'.")
 
 
 def make_aware(
@@ -151,11 +258,13 @@ def build_timezone_block(
     for label in tz_labels:
         s_time, s_abbrev = convert_and_format(start_ist, label)
         e_time, _ = convert_and_format(end_ist, label)
-        # Show the resolved abbreviation (PDT/PST, EDT/EST, CEST/CET…)
         display = s_abbrev if s_abbrev not in ("LMT", "") else label
         lines.append(f"{display} - {s_time} - {e_time}")
 
     return "\n".join(lines)
+
+
+# ── email ─────────────────────────────────────────────────────────────────────
 
 
 def send_email(subject: str, body: str, recipients: list[str]) -> None:
@@ -185,6 +294,9 @@ def send_email(subject: str, body: str, recipients: list[str]) -> None:
         print("\n✓ Email sent successfully.")
     except Exception as e:
         print(f"\n[!] Failed to send email: {e}")
+
+
+# ── main ──────────────────────────────────────────────────────────────────────
 
 
 def main() -> None:
@@ -228,21 +340,16 @@ def main() -> None:
         print(f"\n[!] {e}")
         return
 
-    start_time_string = questionary.text(
-        "Start time (IST):",
-        placeholder="e.g. 9:00 AM",
-        style=cli_style,
-    ).ask()
+    # ── time pickers ──────────────────────────────────────────────────────────
+    print()
+    start_time_string = pick_time("Start time (IST):", "9:00 AM")
     if not start_time_string:
         return
 
-    end_time_string = questionary.text(
-        "End time (IST):",
-        placeholder="e.g. 11:00 AM",
-        style=cli_style,
-    ).ask()
+    end_time_string = pick_time("End time (IST):", "11:00 AM")
     if not end_time_string:
         return
+    print()
 
     maintenance_string = questionary.text(
         "Maintenance duration:",
@@ -252,7 +359,7 @@ def main() -> None:
     if not maintenance_string:
         return
 
-    # Timezone selection — pre-tick tenant defaults
+    # ── timezone selection ────────────────────────────────────────────────────
     all_tz = list(TIMEZONE_MAP.keys())
     default_tz = TENANT_DEFAULT_TZ.get(tenant_name, ["IST"])
     selected_tz = questionary.checkbox(
@@ -265,7 +372,6 @@ def main() -> None:
     if not selected_tz:
         selected_tz = default_tz
 
-    # IST always first
     selected_tz = ["IST"] + [tz for tz in selected_tz if tz != "IST"]
 
     start_end_time_string = f"{start_time_string} - {end_time_string}"
