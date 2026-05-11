@@ -30,7 +30,7 @@ TENANT_OPTIONS = [
     "Auroralife",
     "Attune",
     "Raffles",
-    "LL",
+    "LoveLife",
     "Cereneo",
     "Blue Bulgaria",
     "Core",
@@ -52,7 +52,7 @@ TIMEZONE_MAP = {
 
 # Timezone defaults per tenant
 TENANT_DEFAULT_TZ = {
-    "LL": ["IST", "US/Pacific"],  # PST / PDT
+    "LoveLife": ["IST", "US/Pacific"],  # PST / PDT
     "Reya": ["IST"],
     "IHL": ["IST", "UAE"],
     "Auroralife": ["IST", "US/Pacific"],  # PDT / PST
