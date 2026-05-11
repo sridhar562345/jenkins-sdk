@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     version = input("Enter version:")
 
-    print("@here Release Checklist for 1.14.0\n")
+    print(f"@here Release Checklist for {version}\n")
     for tenant, tenant_ref_page in TENANT_SIBLING_MAP.items():
         title = f"{tenant} Release {version} Checklist"
         tenant_ref_page = get_page(tenant_ref_page, auth)
