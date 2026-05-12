@@ -69,7 +69,7 @@ TENANT_DEFAULT_TZ = {
 EMAIL_BODY_TEMPLATE = """\
 Hi All,
 
-We plan to upgrade our azure {setup_name} setup with the {release_version} version of the {tenant_name} application on {date_string}, around {start_time_string} IST. The servers will be down and under maintenance for {maintenance_string}.
+We plan to upgrade our {cloud_provider} {setup_name} setup with the {release_version} version of the {tenant_name} application on {date_string}, around {start_time_string} IST. The servers will be down and under maintenance for {maintenance_string}.
 
 Date: {date_string}
 Time: {start_end_time_string} IST
@@ -258,7 +258,12 @@ def build_timezone_block(
     for label in tz_labels:
         s_time, s_abbrev = convert_and_format(start_ist, label)
         e_time, _ = convert_and_format(end_ist, label)
-        display = s_abbrev if s_abbrev not in ("LMT", "") else label
+        display = (
+            s_abbrev
+            if s_abbrev not in ("LMT", "")
+            and not s_abbrev.startswith(("+", "-"))
+            else label
+        )
         lines.append(f"{display} - {s_time} - {e_time}")
 
     return "\n".join(lines)
@@ -384,9 +389,12 @@ def main() -> None:
         print(f"\n[!] Timezone conversion failed: {e}")
         return
 
+    cloud_provider = "AWS" if tenant_name == "Morrow Health" else "Azure"
+
     body = EMAIL_BODY_TEMPLATE.format(
         tenant_name=tenant_name,
         setup_name=setup_name,
+        cloud_provider=cloud_provider,
         date_string=date_string,
         start_time_string=start_time_string,
         maintenance_string=maintenance_string,
