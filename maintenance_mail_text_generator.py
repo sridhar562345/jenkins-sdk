@@ -256,14 +256,26 @@ def build_timezone_block(
 
     lines = []
     for label in tz_labels:
-        s_time, s_abbrev = convert_and_format(start_ist, label)
-        e_time, _ = convert_and_format(end_ist, label)
+        tz = pytz.timezone(TIMEZONE_MAP[label])
+        start_local = start_ist.astimezone(tz)
+        end_local = end_ist.astimezone(tz)
+
+        s_abbrev = start_local.strftime("%Z")
+        s_time = start_local.strftime("%I:%M %p").lstrip("0")
+        e_time = end_local.strftime("%I:%M %p").lstrip("0")
+
         display = (
             s_abbrev
             if s_abbrev not in ("LMT", "")
             and not s_abbrev.startswith(("+", "-"))
             else label
         )
+
+        if start_local.date() != date:
+            s_time += f" ({start_local.strftime('%d %b')})"
+        if end_local.date() != date:
+            e_time += f" ({end_local.strftime('%d %b')})"
+
         lines.append(f"{display} - {s_time} - {e_time}")
 
     return "\n".join(lines)
